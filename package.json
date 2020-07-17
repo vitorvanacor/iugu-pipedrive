@@ -1,0 +1,30 @@
+{
+  "name": "iugu-pipedrive",
+  "version": "1.0.0",
+  "description": "Iugu-Pipedrive integration",
+  "main": "index.js",
+  "dependencies": {
+    "axios": "^0.19.2",
+    "dotenv": "^8.2.0",
+    "express": "^4.17.1"
+  },
+  "devDependencies": {},
+  "scripts": {
+    "start": "node index.js",
+    "prod": "NODE_ENV=production npm start",
+    "dev": "NODE_ENV=development npm start",
+    "docker:build": "docker build -t iugu-pipedrive .",
+    "docker": "docker run -p 8080:8080 --name iugu-pipedrive iugu-pipedrive",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/vitorvanacor/iugu-pipedrive.git"
+  },
+  "author": "Vitor Vanacor",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/vitorvanacor/iugu-pipedrive/issues"
+  },
+  "homepage": "https://github.com/vitorvanacor/iugu-pipedrive#readme"
+}

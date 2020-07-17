@@ -1,0 +1,14 @@
+# Dependency directories
+node_modules/
+
+# dotenv environment variables file
+.env
+
+# tmp
+tmp/
+
+# editor
+.vscode/
+
+# other
+*.log
