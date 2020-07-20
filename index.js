@@ -1,44 +1,32 @@
+// Load env variables from .env
+require("dotenv").config();
 // Node modules
 const express = require("express");
 const axios = require("axios");
-require("dotenv").config();
 
 // Constants
-const { PORT, NODE_ENV, API_TOKEN } = process.env;
+const { PORT, NODE_ENV, API_TOKEN, AUTH_TOKEN } = process.env;
 
 // Express config
 const app = express();
 if (NODE_ENV === "production") {
   app.set("trust proxy", 1); // trust first proxy
 }
-app.use(express.json());
-app.use(express.urlencoded());
 
-function printReq(req) {
+// Middlewares
+app.use(express.urlencoded({ extended: true }));
+
+app.use(function printReq(req, res, next) {
   console.log(`<-- ${req.method} ${req.path}
-Query: ${JSON.stringify(req.query, null, 2)}
 Body: ${JSON.stringify(req.body, null, 2)}
-Params: ${JSON.stringify(req.params, null, 2)}`);
-}
-
-app.get("/", function (req, res) {
-  printReq(req);
-  res.send(`<pre>Iugu-Pipedrive integration
-Make a POST with content-type application/x-www-form-urlencoded to with (ex.):
-  event: subscription.created
-  data[id]: 1757E1D7FD5E410A9C563024250015BF
-  data[account_id]: 70CA234077134ED0BF2E0E46B0EDC36F
-  data[customer_name]: John Doe
-  data[customer_email]: johndoe@email.com
-Your request:
-  Query: ${JSON.stringify(req.query, null, 2)}
-  Body: ${JSON.stringify(req.body, null, 2)}
-  Params: ${JSON.stringify(req.params, null, 2)}
-  </pre>`);
+Auth: ${req.header("Authorization")}`);
+  next();
 });
 
-app.post("/", async function (req, res) {
-  printReq(req);
+app.post("/", function validateReq(req, res, next) {
+  if (req.headers.authorization !== AUTH_TOKEN) {
+    return res.status(401).send(`Wrong Auth: ${req.headers.authorization}`);
+  }
   if (req.body.event !== "subscription.created") {
     return res.status(400).send("Event not supported:" + req.body.event);
   }
@@ -49,36 +37,51 @@ app.post("/", async function (req, res) {
   if (!customer_name || !customer_email) {
     return res.status(400).send("Missing customer name or email");
   }
-  let response;
+  next();
+});
+
+// Routes
+app.post("/", async function (req, res) {
   try {
-    response = await axios.post(
+    const { customer_name, customer_email } = req.body.data;
+    const response = await axios.post(
       "https://api.pipedrive.com/v1/persons?api_token=" + API_TOKEN,
       {
         name: customer_name,
         email: customer_email,
       }
     );
+    const { data, status } = response;
+    return res.status(status).send(data);
   } catch (err) {
     if (err.response) {
-      response = err.response;
+      const { status, data } = err.response;
+      return res.status(status).send(data);
     } else if (err.request) {
-      response = { status: 500, data: "Pipedrive did not respond" };
+      return res.status(500).send("Pipedrive did not respond");
     } else {
-      response = {
-        status: 500,
-        data: "Error sending req to pipedrive: " + err.message,
-      };
+      return res
+        .status(500)
+        .send(`Error sending req to pipedrive: ${err.message}`);
     }
   }
-  const { data, status } = response;
-  console.log(status, data);
-  res.status(status).send(data);
 });
 
-// Ping pong for tests
-app.get("/ping", function (req, res) {
-  printReq(req);
-  res.send("pong");
+app.get("/", function (req, res) {
+  res.send(`<pre>Iugu-Pipedrive integration
+Make a POST with content-type application/x-www-form-urlencoded with (ex.):
+  event: subscription.created
+  data[customer_name]: John Doe
+  data[customer_email]: johndoe@email.com
+Your request:
+  Query: ${JSON.stringify(req.query, null, 2)}
+  Body: ${JSON.stringify(req.body, null, 2)}
+  Params: ${JSON.stringify(req.params, null, 2)}
+</pre>`);
+});
+
+app.get("/health", function (req, res) {
+  res.status(200).send("OK");
 });
 
 // Init
